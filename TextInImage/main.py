@@ -11,32 +11,36 @@ region = os.getenv("REGION")
 
 app = Flask(__name__)
 
-# Fungsi untuk melakukan analisis wajah dengan AWS Rekognition
-def analyze_face(file_stream):
+
+def detectText(file_stream):
     rekognition = boto3.client('rekognition', 
                                region_name=region, 
                                aws_access_key_id=aws_access_key_id, 
                                aws_secret_access_key=aws_secret_access_key)
-    response = rekognition.detect_faces(
-        Image={'Bytes': file_stream},
-        Attributes=['ALL'] 
+    response = rekognition.detect_text(
+        Image={
+            'Bytes': file_stream
+        }
     )
     return response
 
-# Endpoint untuk mengunggah gambar dan melakukan analisis wajah
-@app.route('/analyze_face', methods=['POST'])
-def upload_and_analyze_face():
+@app.route('/detect_text', methods=['POST'])
+def detectTextEndpoint():
     try:
         uploaded_file = request.files['file']
         if uploaded_file.filename != '':
             file_stream = uploaded_file.read()
-            response = analyze_face(file_stream)
-            print('dapat response')
-            return jsonify(response)
+            response = detectText(file_stream)
+            detected_text = []
+
+            # Mengambil teks yang terdeteksi dari respons AWS Rekognition
+            for item in response['TextDetections']:
+                detected_text.append(item['DetectedText'])
+
+            return jsonify({'detected_text': detected_text})
         else:
             return jsonify({'error': 'No file uploaded'})
     except Exception as e:
-        print('invalid format gambar')
         return jsonify({'error': str(e)})
 
 if __name__ == '__main__':
